@@ -1,0 +1,68 @@
+version: "3.7"
+services:
+  app:
+    build:
+      args:
+        user: jasalde
+        uid: 1000
+      context: ./
+      dockerfile: Dockerfile
+    image: ${DOCKER_APP_NAME}
+    env_file: .env
+    container_name: ${DOCKER_APP_NAME}-app
+    restart: unless-stopped
+    working_dir: /var/www/app/public/
+    volumes:
+      - ./:/var/www/app
+    networks:
+      - ${DOCKER_APP_NAME}
+
+  db:
+    image: mariadb:latest
+    ports:
+      - "3306:3306"
+    env_file: .env
+    container_name: ${DOCKER_APP_NAME}-db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_USER: ${DB_USERNAME}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      SERVICE_TAGS: dev
+      SERVICE_NAME: mysql
+    volumes:
+      - ./docker-compose/mysql:/docker-entrypoint-initdb.d
+    networks:
+      - ${DOCKER_APP_NAME}
+
+  nginx:
+    image: nginx:1.17-alpine
+    env_file: .env
+    container_name: ${DOCKER_APP_NAME}-nginx
+    restart: unless-stopped
+    ports:
+      - 8000:80
+    volumes:
+      - ./public:/var/www/app/public
+      - ./docker-compose/nginx:/etc/nginx/conf.d
+    networks:
+      - ${DOCKER_APP_NAME}
+
+networks:
+  slim-playground: #DOCKER_APP_NAME
+    driver: bridge
+
+
+# $ docker-compose build app
+# $ docker-compose up -d
+# $ docker-compose ps
+# $ docker-compose exec app ls -l
+# $ docker-compose exec app composer install
+# $ docker-compose exec app php artisan key:generate
+# http://server_domain_or_IP:8000
+# execute command within php container: docker-compose exec app ...
+
+#Shut down docker compose: docker-compose down
+
+#docker exec -it <container_name> bash
